@@ -249,7 +249,7 @@ class Order {
     Side      side_;            // 4 bytes (enum)
     Price     price_;           // 4 bytes
     Quantity  initialQuantity_; // 4 bytes
-    Quantity  remainingQuantity_; // 4 bytes
+    Quantity  quantity_; // 4 bytes
     bool      cancelled_;       // 1 byte → 3 bytes padding after
     // Total: ~36 bytes with padding, not 33
 };
@@ -262,7 +262,7 @@ class Order {
     OrderId   orderId_;           // 8 bytes
     Price     price_;             // 4 bytes
     Quantity  initialQuantity_;   // 4 bytes
-    Quantity  remainingQuantity_; // 4 bytes
+    Quantity  quantity_; // 4 bytes
     OrderType orderType_;         // 4 bytes (enum, assume int)
     Side      side_;              // 1 byte  (can make uint8_t)
     bool      cancelled_;         // 1 byte
@@ -339,7 +339,7 @@ Many hot-path functions like `Fill`, `Cancel`, `IsFilled`, and `MatchOrders` can
 ```cpp
 void Cancel() noexcept { cancelled_ = true; }
 bool IsCancelled() const noexcept { return cancelled_; }
-bool IsFilled() const noexcept { return remainingQuantity_ == 0; }
+bool IsFilled() const noexcept { return quantity_ == 0; }
 ```
 
 ---

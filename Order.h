@@ -15,7 +15,7 @@ public:
           , orderId_{orderId}
           , side_{side}
           , price_{price}
-          , remainingQuantity_{quantity} {
+          , quantity_{quantity} {
         if (quantity == 0) {
             throw std::invalid_argument("Order quantity must be greater than zero");
         }
@@ -29,16 +29,16 @@ public:
     Side GetSide() const { return side_; }
     Price GetPrice() const { return price_; }
     OrderType GetOrderType() const { return orderType_; }
-    Quantity GetRemainingQuantity() const { return remainingQuantity_; }
-    bool IsFilled() const { return GetRemainingQuantity() == 0; }
+    Quantity GetQuantity() const { return quantity_; }
+    bool IsFilled() const { return GetQuantity() == 0; }
 
     void Fill(Quantity quantity) {
         // Fills part of an order,
-        if (quantity > GetRemainingQuantity()) {
+        if (quantity > GetQuantity()) {
             throw std::logic_error(std::format("Order ({}) cannot be filled for more than its remaining quantity.",
                                                GetOrderId()));
         }
-        remainingQuantity_ -= quantity;
+        quantity_ -= quantity;
     }
 
     void ToGoodTillCancel(Price price) {
@@ -55,7 +55,7 @@ public:
     void UpdateQuantity(Quantity newQuantity) {
         if (newQuantity == 0)
             throw std::invalid_argument("Order quantity must be greater than zero");
-        remainingQuantity_ = newQuantity;
+        quantity_ = newQuantity;
     }
 
 private:
@@ -63,5 +63,5 @@ private:
     OrderId orderId_;
     Side side_;
     Price price_;
-    Quantity remainingQuantity_;
+    Quantity quantity_;
 };

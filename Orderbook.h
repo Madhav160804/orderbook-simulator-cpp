@@ -51,13 +51,13 @@ private:
         Side      side              = Side::Buy;
         Price     price             = 0;
         OrderType orderType         = OrderType::GoodTillCancel;
-        Quantity  remainingQuantity = 0;
+        Quantity  quantity = 0;
         bool      inUse             = false;
         int32_t   prev              = NULL_IDX; // previous in same price level DLL
         int32_t   next              = NULL_IDX; // next in same price level DLL
 
-        bool IsFilled()  const noexcept { return remainingQuantity == 0; }
-        void Fill(Quantity q) noexcept  { remainingQuantity -= q; }
+        bool IsFilled()  const noexcept { return quantity == 0; }
+        void Fill(Quantity q) noexcept  { quantity -= q; }
     };
 
     // ── Price Level ───────────────────────────────────────────────────────
@@ -116,7 +116,7 @@ private:
         if (lvl.tail != NULL_IDX) pool_[lvl.tail].next = idx;
         else                      lvl.head = idx;
         lvl.tail = idx;
-        lvl.totalQty += pool_[idx].remainingQuantity;
+        lvl.totalQty += pool_[idx].quantity;
         lvl.orderCount++;
     }
 
@@ -128,7 +128,7 @@ private:
         else                    lvl.head = o.next;
         if (o.next != NULL_IDX) pool_[o.next].prev = o.prev;
         else                    lvl.tail = o.prev;
-        lvl.totalQty -= o.remainingQuantity;
+        lvl.totalQty -= o.quantity;
         lvl.orderCount--;
         o.prev = o.next = NULL_IDX;
     }
@@ -179,7 +179,7 @@ private:
                 if (side == Side::Sell && price < aggrPrice) break;
                 int32_t cur = lvl.head;
                 while (cur != NULL_IDX && remaining > 0) {
-                    Quantity q = std::min(remaining, pool_[cur].remainingQuantity);
+                    Quantity q = std::min(remaining, pool_[cur].quantity);
                     matches.push_back({cur, q});
                     remaining -= q;
                     cur = pool_[cur].next;
@@ -200,7 +200,7 @@ private:
             auto& mo = pool_[matchIdx];
             Price tp = mo.price;
 
-            // Update level totalQty before Fill (remainingQuantity still holds full value)
+            // Update level totalQty before Fill (quantity still holds full value)
             PriceLevel& matchLvl = (mo.side == Side::Buy) ? bids_.at(mo.price)
                                                            : asks_.at(mo.price);
             matchLvl.totalQty -= qty;
@@ -216,7 +216,7 @@ private:
 
             if (mo.IsFilled()) {
                 orders_.erase(mo.orderId);
-                DllRemove(matchLvl, matchIdx);  // remainingQuantity==0, subtracts 0 from totalQty
+                DllRemove(matchLvl, matchIdx);  // quantity==0, subtracts 0 from totalQty
                 if (matchLvl.empty()) {
                     if (mo.side == Side::Buy) bids_.erase(mo.price);
                     else                      asks_.erase(mo.price);
@@ -267,7 +267,7 @@ private:
                 PoolOrder& bid    = pool_[bidIdx];
                 PoolOrder& ask    = pool_[askIdx];
 
-                Quantity qty = std::min(bid.remainingQuantity, ask.remainingQuantity);
+                Quantity qty = std::min(bid.quantity, ask.quantity);
 
                 trades.emplace_back(bid.orderId, ask.orderId, tradePrice, qty);
 
@@ -401,7 +401,7 @@ public:
             pool_[idx].side              = side;
             pool_[idx].price             = price;
             pool_[idx].orderType         = type;
-            pool_[idx].remainingQuantity = qty;
+            pool_[idx].quantity = qty;
             auto matches = CollectFOK(side, price, qty);
             Quantity total = 0;
             for (auto& m : matches) total += m.qty;
@@ -415,7 +415,7 @@ public:
         pool_[idx].side              = side;
         pool_[idx].price             = price;
         pool_[idx].orderType         = type;
-        pool_[idx].remainingQuantity = qty;
+        pool_[idx].quantity = qty;
         InsertIntoBook(idx);
 
         const bool isIoc = (type == OrderType::ImmediateOrCancel);
@@ -455,9 +455,9 @@ public:
             // Quantity-only: update totalQty cache, then update order in place
             PriceLevel& lvl = (existing.side == Side::Buy) ? bids_.at(existing.price)
                                                            : asks_.at(existing.price);
-            lvl.totalQty -= existing.remainingQuantity;
-            existing.remainingQuantity = mod.GetQuantity();
-            lvl.totalQty += existing.remainingQuantity;
+            lvl.totalQty -= existing.quantity;
+            existing.quantity = mod.GetQuantity();
+            lvl.totalQty += existing.quantity;
             return {};
         }
 
