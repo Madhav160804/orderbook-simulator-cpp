@@ -52,7 +52,6 @@ private:
         Price     price             = 0;
         OrderType orderType         = OrderType::GoodTillCancel;
         Quantity  quantity = 0;
-        bool      inUse             = false;
         int32_t   prev              = NULL_IDX; // previous in same price level DLL
         int32_t   next              = NULL_IDX; // next in same price level DLL
 
@@ -98,12 +97,10 @@ private:
         int32_t idx = freeList_.back();
         freeList_.pop_back();
         pool_[idx]       = PoolOrder{};
-        pool_[idx].inUse = true;
         return idx;
     }
 
     void Free(int32_t idx) noexcept {
-        pool_[idx].inUse = false;
         freeList_.push_back(idx);
     }
 
