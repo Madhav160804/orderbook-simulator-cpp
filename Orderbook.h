@@ -80,9 +80,9 @@ private:
     std::map<Price, PriceLevel, std::less<Price>>    asks_; // best ask first
 
     // absl::flat_hash_map: open-addressing, SIMD probe, zero per-entry allocs.
-    // Every CancelOrder and every match executes an orders_.find(id) — this
+    // Every CancelOrder and every match executes an orderMap_.find(id) — this
     // is the single hottest lookup in the engine.
-    absl::flat_hash_map<OrderId, int32_t> orders_; // id → pool index
+    absl::flat_hash_map<OrderId, int32_t> orderMap_; // id → pool index
 
     MarketDataStats stats_;
     uint64_t        lastSequenceNumber_ = 0;
@@ -143,7 +143,7 @@ private:
     }
 
     bool ValidateOrder(OrderId id, Price price, Quantity qty) const {
-        if (orders_.contains(id)) return false; // duplicate order ID
+        if (orderMap_.contains(id)) return false; // duplicate order ID
 
         bool isSentinel = (price == std::numeric_limits<Price>::max() ||
                            price == std::numeric_limits<Price>::min());
@@ -158,7 +158,7 @@ private:
         auto& o   = pool_[idx];
         PriceLevel& lvl = (o.side == Side::Buy) ? bids_[o.price] : asks_[o.price];
         DllAppend(lvl, idx);
-        orders_[o.orderId] = idx;
+        orderMap_[o.orderId] = idx;
     }
 
     // ── FillOrKill two-phase ──────────────────────────────────────────────
@@ -212,7 +212,7 @@ private:
             }
 
             if (mo.IsFilled()) {
-                orders_.erase(mo.orderId);
+                orderMap_.erase(mo.orderId);
                 DllRemove(matchLvl, matchIdx);  // quantity==0, subtracts 0 from totalQty
                 if (matchLvl.empty()) {
                     if (mo.side == Side::Buy) bids_.erase(mo.price);
@@ -276,12 +276,12 @@ private:
                 ask.Fill(qty);
 
                 if (bid.IsFilled()) {
-                    orders_.erase(bid.orderId);
+                    orderMap_.erase(bid.orderId);
                     DllRemove(bidLvl, bidIdx);
                     Free(bidIdx);
                 }
                 if (ask.IsFilled()) {
-                    orders_.erase(ask.orderId);
+                    orderMap_.erase(ask.orderId);
                     DllRemove(askLvl, askIdx);
                     Free(askIdx);
                 }
@@ -326,8 +326,8 @@ private:
     void ProcessSnapshot(const BookSnapshotMessage& msg) {
         // Clear existing book: cancel all live orders (proper DLL cleanup + pool free)
         std::vector<OrderId> toCancel;
-        toCancel.reserve(orders_.size());
-        for (const auto& [id, _] : orders_) toCancel.push_back(id);
+        toCancel.reserve(orderMap_.size());
+        for (const auto& [id, _] : orderMap_) toCancel.push_back(id);
         for (auto id : toCancel) CancelOrder(id);
 
         // Synthetic IDs start high to avoid collision with real order IDs
@@ -359,7 +359,7 @@ public:
     explicit Orderbook(size_t poolSize = POOL_SIZE) {
         pool_.resize(poolSize);
         freeList_.reserve(poolSize);
-        orders_.reserve(poolSize / 4); // absl pre-size to reduce rehashes
+        orderMap_.reserve(poolSize / 4); // absl pre-size to reduce rehashes
         for (int32_t i = static_cast<int32_t>(poolSize) - 1; i >= 0; --i)
             freeList_.push_back(i); // index 0 allocated first (LIFO free list)
     }
@@ -423,8 +423,8 @@ public:
     // O(1): hash map erase + DLL stitch + pool free.
     // No deque drain, no dead entries, no deferred cleanup.
     void CancelOrder(OrderId id) {
-        auto it = orders_.find(id);
-        if (it == orders_.end()) return;
+        auto it = orderMap_.find(id);
+        if (it == orderMap_.end()) return;
         int32_t    idx = it->second;
         PoolOrder& o   = pool_[idx];
 
@@ -436,15 +436,15 @@ public:
             else                     asks_.erase(o.price);
         }
         Free(idx);
-        orders_.erase(it);
+        orderMap_.erase(it);
     }
 
     // Quantity-only modify: update in place, preserve time priority (DLL position).
     // Price change: cancel + re-add (order goes to back of new price level — correct
     // exchange behaviour, matches NASDAQ/CME rules).
     Trades ModifyOrder(OrderModify mod) {
-        auto it = orders_.find(mod.GetOrderId());
-        if (it == orders_.end()) return {};
+        auto it = orderMap_.find(mod.GetOrderId());
+        if (it == orderMap_.end()) return {};
         PoolOrder& existing = pool_[it->second];
         if (mod.GetSide() != existing.side) return {}; // side-flip forbidden
 
@@ -469,7 +469,7 @@ public:
     // The book has no clock — the caller decides when.
     void CancelGoodForDayOrders() {
         std::vector<OrderId> toCancel;
-        for (const auto& [id, idx] : orders_)
+        for (const auto& [id, idx] : orderMap_)
             if (pool_[idx].orderType == OrderType::GoodForDay)
                 toCancel.push_back(id);
         for (auto id : toCancel) CancelOrder(id);
@@ -477,9 +477,9 @@ public:
 
     // ── Queries ───────────────────────────────────────────────────────────
 
-    std::size_t Size() const noexcept { return orders_.size(); }
+    std::size_t Size() const noexcept { return orderMap_.size(); }
 
-    bool HasOrder(OrderId id) const { return orders_.contains(id); }
+    bool HasOrder(OrderId id) const { return orderMap_.contains(id); }
 
     // O(P) — totalQty is maintained per level, no per-order scan needed.
     OrderbookLevelInfos GetOrderInfos() const {
