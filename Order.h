@@ -15,7 +15,6 @@ public:
           , orderId_{orderId}
           , side_{side}
           , price_{price}
-          , initialQuantity_{quantity}
           , remainingQuantity_{quantity} {
         if (quantity == 0) {
             throw std::invalid_argument("Order quantity must be greater than zero");
@@ -30,9 +29,7 @@ public:
     Side GetSide() const { return side_; }
     Price GetPrice() const { return price_; }
     OrderType GetOrderType() const { return orderType_; }
-    Quantity GetInitialQuantity() const { return initialQuantity_; }
     Quantity GetRemainingQuantity() const { return remainingQuantity_; }
-    Quantity GetFilledQuantity() const { return GetInitialQuantity() - GetRemainingQuantity(); }
     bool IsFilled() const { return GetRemainingQuantity() == 0; }
 
     void Fill(Quantity quantity) {
@@ -58,21 +55,13 @@ public:
     void UpdateQuantity(Quantity newQuantity) {
         if (newQuantity == 0)
             throw std::invalid_argument("Order quantity must be greater than zero");
-        initialQuantity_ = newQuantity;
         remainingQuantity_ = newQuantity;
     }
-
-    // Lazy deletion: mark this order cancelled without touching the price-level container.
-    // The entry is left in the deque and dropped from the front during the next matching pass.
-    void Cancel() { cancelled_ = true; }
-    bool IsCancelled() const { return cancelled_; }
 
 private:
     OrderType orderType_;
     OrderId orderId_;
     Side side_;
     Price price_;
-    Quantity initialQuantity_;
     Quantity remainingQuantity_;
-    bool cancelled_ = false;
 };

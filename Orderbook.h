@@ -51,7 +51,6 @@ private:
         Side      side              = Side::Buy;
         Price     price             = 0;
         OrderType orderType         = OrderType::GoodTillCancel;
-        Quantity  initialQuantity   = 0;
         Quantity  remainingQuantity = 0;
         bool      inUse             = false;
         int32_t   prev              = NULL_IDX; // previous in same price level DLL
@@ -402,7 +401,6 @@ public:
             pool_[idx].side              = side;
             pool_[idx].price             = price;
             pool_[idx].orderType         = type;
-            pool_[idx].initialQuantity   = qty;
             pool_[idx].remainingQuantity = qty;
             auto matches = CollectFOK(side, price, qty);
             Quantity total = 0;
@@ -417,7 +415,6 @@ public:
         pool_[idx].side              = side;
         pool_[idx].price             = price;
         pool_[idx].orderType         = type;
-        pool_[idx].initialQuantity   = qty;
         pool_[idx].remainingQuantity = qty;
         InsertIntoBook(idx);
 
@@ -459,7 +456,6 @@ public:
             PriceLevel& lvl = (existing.side == Side::Buy) ? bids_.at(existing.price)
                                                            : asks_.at(existing.price);
             lvl.totalQty -= existing.remainingQuantity;
-            existing.initialQuantity   = mod.GetQuantity();
             existing.remainingQuantity = mod.GetQuantity();
             lvl.totalQty += existing.remainingQuantity;
             return {};
