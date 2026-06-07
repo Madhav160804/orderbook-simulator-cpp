@@ -28,12 +28,30 @@ FetchContent_MakeAvailable(absl)
 
 find_package(CURL REQUIRED)
 
+# Google Benchmark
+FetchContent_Declare(
+        googlebenchmark
+        GIT_REPOSITORY https://github.com/google/benchmark.git
+        GIT_TAG        v1.8.3
+)
+set(BENCHMARK_ENABLE_TESTING OFF CACHE BOOL "Disable benchmark testing" FORCE)
+set(BENCHMARK_ENABLE_INSTALL OFF CACHE BOOL "Disable benchmark install" FORCE)
+FetchContent_MakeAvailable(googlebenchmark)
+
 # ── Executables ───────────────────────────────────────────────────────────
 
-# Functionality tests + performance benchmarks (combined in one binary)
+# Functionality tests
 add_executable(OrderBookTests tests.cpp)
 target_compile_options(OrderBookTests PRIVATE -O3 -march=native -DNDEBUG)
 target_link_libraries(OrderBookTests
+        absl::flat_hash_map
+)
+
+# Google Benchmarks
+add_executable(OrderBookBenchmarks benchmarks.cpp)
+target_compile_options(OrderBookBenchmarks PRIVATE -O3 -march=native -DNDEBUG)
+target_link_libraries(OrderBookBenchmarks
+        benchmark::benchmark
         absl::flat_hash_map
 )
 
