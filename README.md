@@ -111,5 +111,3 @@ Traditional deques require shifting elements or scanning when an order is cancel
 ## Future Enhancements
 
 - TCP/UDP WebSocket integration for true tick-by-tick ingestion (bypassing JSON overhead via direct binary struct mapping).
-- Multiple matching algorithms (pro-rata, size pro-rata).
-- Iceberg and other advanced order types.
