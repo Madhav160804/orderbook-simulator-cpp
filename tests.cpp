@@ -199,7 +199,7 @@ TEST(TestOrderModify) {
     orderbook.AddOrder(OrderType::GoodTillCancel, orderId, Side::Buy, 100, 10);
 
     OrderModify modify(orderId, Side::Buy, 105, 15);
-    orderbook.MatchOrder(modify);
+    orderbook.ModifyOrder(modify);
 
     ASSERT_EQ(orderbook.Size(), 1);
     auto infos = orderbook.GetOrderInfos();
@@ -340,13 +340,13 @@ TEST(TestTwoMarketOrders_NoInvalidTrade) {
     ASSERT_TRUE(trades2.empty());
 }
 
-// Bug 3: MatchOrder must reject side changes.
+// Bug 3: ModifyOrder must reject side changes.
 TEST(TestModify_CannotChangeSide) {
     Orderbook orderbook;
     orderbook.AddOrder(OrderType::GoodTillCancel, 1, Side::Buy, 100, 10);
 
     OrderModify wrongSide(1, Side::Sell, 95, 10);
-    auto trades = orderbook.MatchOrder(wrongSide);
+    auto trades = orderbook.ModifyOrder(wrongSide);
 
     ASSERT_TRUE(trades.empty());
     ASSERT_EQ(orderbook.Size(), 1);
@@ -359,7 +359,7 @@ TEST(TestModify_SameSide_Works) {
     orderbook.AddOrder(OrderType::GoodTillCancel, 1, Side::Buy, 100, 10);
 
     OrderModify valid(1, Side::Buy, 105, 20);
-    orderbook.MatchOrder(valid);
+    orderbook.ModifyOrder(valid);
 
     ASSERT_EQ(orderbook.Size(), 1);
     auto infos = orderbook.GetOrderInfos();
@@ -376,7 +376,7 @@ TEST(TestModify_QuantityOnly_PreservesTimePriority) {
 
     // Modify order 2 qty only — stays in middle of DLL
     OrderModify qtyOnly(2, Side::Buy, 100, 50);
-    orderbook.MatchOrder(qtyOnly);
+    orderbook.ModifyOrder(qtyOnly);
     ASSERT_EQ(orderbook.Size(), 3);
 
     // Sell 15: fills order 1 (10) fully, then 5 from order 2 — not order 3
@@ -484,7 +484,7 @@ void BenchmarkModifyOrders(int numOrders) {
     auto start = std::chrono::high_resolution_clock::now();
     for (auto orderId : orderIds) {
         OrderModify modify(orderId, Side::Buy, priceDist(gen), qtyDist(gen));
-        orderbook.MatchOrder(modify);
+        orderbook.ModifyOrder(modify);
     }
     auto end = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
@@ -567,7 +567,7 @@ void BenchmarkHighFrequencyTrading() {
             size_t idx = gen() % activeOrders.size();
             Price price = (nextOrderId % 2) ? bidPriceDist(gen) : askPriceDist(gen);
             OrderModify modify(activeOrders[idx], Side::Buy, price, qtyDist(gen));
-            orderbook.MatchOrder(modify);
+            orderbook.ModifyOrder(modify);
             modifyCount++;
         }
     }

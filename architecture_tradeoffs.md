@@ -232,7 +232,7 @@ while (true) {
 | **Return by value** (current) | 1× `new` + 1× `delete` always | Allocator hit on every matched order |
 | **Output parameter** (fix) | Zero (after warmup) | Buffer reused across calls indefinitely |
 
-> This pattern generalises to any function that currently returns a `std::vector` in the hot path: `MatchOrder`, `GetOrderInfos`, `ProcessMarketDataBatch`, etc. All of them should accept pre-allocated output buffers in a truly latency-sensitive system.
+> This pattern generalises to any function that currently returns a `std::vector` in the hot path: `ModifyOrder`, `GetOrderInfos`, `ProcessMarketDataBatch`, etc. All of them should accept pre-allocated output buffers in a truly latency-sensitive system.
 
 ---
 

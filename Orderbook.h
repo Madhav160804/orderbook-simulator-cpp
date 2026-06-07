@@ -315,7 +315,7 @@ private:
 
     void ProcessModify(const ModifyOrderMessage& msg) {
         OrderModify modify(msg.orderId, msg.side, msg.newPrice, msg.newQuantity);
-        MatchOrder(modify);
+        ModifyOrder(modify);
         stats_.modifications++;
     }
 
@@ -442,7 +442,7 @@ public:
     // Quantity-only modify: update in place, preserve time priority (DLL position).
     // Price change: cancel + re-add (order goes to back of new price level — correct
     // exchange behaviour, matches NASDAQ/CME rules).
-    Trades MatchOrder(OrderModify mod) {
+    Trades ModifyOrder(OrderModify mod) {
         auto it = orders_.find(mod.GetOrderId());
         if (it == orders_.end()) return {};
         PoolOrder& existing = pool_[it->second];
